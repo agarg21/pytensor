@@ -10,12 +10,19 @@ import pytest
 
 
 def pytest_sessionstart(session):
-    os.environ["PYTENSOR_FLAGS"] = ",".join(
-        [
-            os.environ.setdefault("PYTENSOR_FLAGS", ""),
-            "on_opt_error=raise,on_shape_error=raise,cmodule__warn_no_version=True",
-        ]
-    )
+    flags = [
+        os.environ.setdefault("PYTENSOR_FLAGS", ""),
+        "on_opt_error=raise,on_shape_error=raise,cmodule__warn_no_version=True",
+    ]
+    # Under pytest-xdist, give each worker its own compile cache: the default
+    # one is guarded by a single file lock, so workers would wait on each other.
+    worker = os.environ.get("PYTEST_XDIST_WORKER")
+    if worker:
+        flags.append(
+            "base_compiledir="
+            + os.path.join(os.path.expanduser("~"), ".pytensor", f"xdist-{worker}")
+        )
+    os.environ["PYTENSOR_FLAGS"] = ",".join(flags)
     os.environ["NUMBA_BOUNDSCHECK"] = "1"
 
 
